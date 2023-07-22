@@ -12,7 +12,7 @@
   The circuit:
 * 1 lcd gnd
 * 2 lcd vdd 5v
-* 3 V0 contrast potentiometer 10kohm
+* 3 V0 contrast potentiometer gnd
 * 4 LCD RS pin to D10
 * 5 lcd RW pin to gnd
 * 6 LCD E (Enable) pin D9
