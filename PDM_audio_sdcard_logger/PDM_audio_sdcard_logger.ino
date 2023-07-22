@@ -18,7 +18,6 @@
 #include <PDM.h> // microphone library
 #include <SD.h> // sd card library
 #include <LiquidCrystal.h> // lcd display library
-#include <SPI.h>
 
 // initialize the library by associating any needed LCD interface pin
 // with the arduino pin number it is connected to
@@ -136,7 +135,7 @@ void loop() {
 
 		lcd.setCursor(0, 0);
 		lcd.clear();
-		lcd.print("stopped");
+		lcd.print("saved rec_" + file_name.substring(4, 7));
 
 		//while(1) ;
 
