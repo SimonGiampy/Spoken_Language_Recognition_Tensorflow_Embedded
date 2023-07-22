@@ -18,6 +18,7 @@
 #include <PDM.h> // microphone library
 #include <SD.h> // sd card library
 #include <LiquidCrystal.h> // lcd display library
+#include <SPI.h>
 
 // initialize the library by associating any needed LCD interface pin
 // with the arduino pin number it is connected to
@@ -41,7 +42,6 @@ const int chipSelect = D2;
 
 // start time for recording
 long start = 0;
-int i = 0;
 
 // file pointer where to write binary data
 File myFile;
@@ -61,14 +61,6 @@ void setup() {
 	// Print a message to the LCD.
 	lcd.print("hello, world!");
 	analogWrite(A1, 128);
-	/*
-	for (int i = 0; i < 255; i ++) {
-		analogWrite(A1, i);
-		lcd.setCursor(0, 1);
-		lcd.print(String(i));
-		delay(100);
-	}
-	*/
 	
 
 	Serial.begin(9600);
@@ -82,13 +74,7 @@ void setup() {
 	}
 	Serial.println("initialization done.");
 
-	// open the file, if it doesn't exists, it creates a new file
-	// note that the length of the file cannot exceed 8 characters
-	// and the extension of the file cannot exceed 8 characters
-	myFile = SD.open("rec_001.bin", FILE_WRITE);
-	if (!myFile) {
-		Serial.println("error creating file");
-	}
+	
 	// Configure the data receive callback
 	PDM.onReceive(onPDMdata);
 
@@ -108,13 +94,20 @@ void setup() {
 
 void loop() {
 
-	start = millis();
-	i = 0;
-
 	// read the state of the pushbutton value:
  	buttonState = digitalRead(buttonPin);
 
 	if (buttonState) { // button pressed
+		// open the file, if it doesn't exists, it creates a new file
+		// note that the length of the file cannot exceed 8 characters
+		// and the extension of the file cannot exceed 8 characters
+		String file_name = newName();
+		myFile = SD.open(file_name, FILE_WRITE);
+
+		if (!myFile) {
+			Serial.println("error creating file");
+		}
+
 		digitalWrite(ledPin, HIGH);
 
 		lcd.setCursor(0, 0); // first row
@@ -123,9 +116,12 @@ void loop() {
 		lcd.setCursor(0, 1); // second row
 
 		// Wait for samples to be read
+		long time, start = millis();
 		while (millis() - start < 5000) {
 			// print the number of seconds since reset:
-			lcd.print(millis() / 1000);
+			time = (millis() - start) /1000;
+			lcd.setCursor(0, 1);
+			lcd.print(time);
 
 			if (bytesRead) {
 				//Serial.write((byte *) sampleBuffer, bytesRead);
@@ -133,13 +129,13 @@ void loop() {
 
 				// Clear the read count
 				bytesRead = 0;
-				i++; 
 			}
 		}
 		myFile.close();
 		Serial.println("closed file");
 
 		lcd.setCursor(0, 0);
+		lcd.clear();
 		lcd.print("stopped");
 
 		//while(1) ;
@@ -149,6 +145,42 @@ void loop() {
 	}
 
 	
+}
+
+String newName() {
+
+	File root = SD.open("/");
+	int maxFileNumber = -1;
+
+	// Cerca il file con il numero più alto
+	while (true) {
+		File entry = root.openNextFile();
+		if (!entry) {
+			break; // Nessun altro file
+		}
+		if (!entry.isDirectory()) {
+			String fileName = entry.name();
+			if (fileName.startsWith("REC_") && fileName.endsWith(".BIN")) {
+				int fileNumber = fileName.substring(4, 7).toInt(); // Estrae il numero dal nome del file
+				if (fileNumber > maxFileNumber) {
+					maxFileNumber = fileNumber;
+				}
+			}
+		}
+
+		entry.close();
+	}
+	root.close();
+
+	// Incrementa il numero del file più alto
+	int newFileNumber = maxFileNumber + 1;
+
+	// Crea il nuovo nome del file
+	//String newFileName = "rec_" + String(newFileNumber) + ".bin";
+	char * new_name = (char *) malloc(12);
+	snprintf(new_name, 12, "rec_%03d.bin", newFileNumber);
+	Serial.println(String (new_name));
+	return String(new_name);
 }
 
 /**
