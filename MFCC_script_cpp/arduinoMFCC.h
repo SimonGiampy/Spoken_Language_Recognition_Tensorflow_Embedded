@@ -16,20 +16,22 @@
 	along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 */
+
 #ifndef arduinoMFCC_H
 #define arduinoMFCC_H
+
 #include <math.h>
 #include <stdint.h>
 #include "arduinoFFT.h"
-#define AUDIO_SAMPLE_RATE_EXACT  8000
+#define AUDIO_SAMPLE_RATE_EXACT 16000
 
 class arduinoMFCC {
 public:
-    // Constructeur
+    // Constructor
     arduinoMFCC(uint8_t  num_channels, uint16_t  frame_size, uint8_t  hop_size, uint8_t  mfcc_size, float samplerate);
     ~arduinoMFCC() ;
 
-    // Fonctions publiques
+    // public functions
     void compute(void);
     void compute(uint8_t ,uint16_t ,float , float *, float *);
     void computebust(uint8_t ,uint16_t ,float , float *, float *);
@@ -50,7 +52,7 @@ public:
     void create_hamming_window(uint16_t , float *);
     void create_dct_matrix();
     void create_dct_matrix(float **);
-// 
+
     float _samplerate;
     float* _frame;
     uint16_t  _frame_size;
@@ -62,11 +64,9 @@ public:
     uint8_t  _hop_size;
     uint8_t  _mfcc_size;
     float** _dct_matrix;
-private:
-    // Variables privées
-        float* coeffs;
 
-    // Fonctions privées
+private:
+    float* coeffs;
 
 };
 
