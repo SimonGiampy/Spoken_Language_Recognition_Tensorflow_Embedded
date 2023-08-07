@@ -1,6 +1,7 @@
 #include <fstream>
 #include <iostream>
 
+
 #include "arduinoMFCC.h"
 
 // MFCC parameters
@@ -43,6 +44,34 @@ int main() {
 
     return 0;
 }
+
+//Saves the mfcc_coefficients into a csv file 
+void writeInt8ArrayToCSV(int8_t **mfcc_coeffs) {
+
+  size_t numRows = sizeof(mfcc_coeffs) / sizeof(mfcc_coeffs[0]);
+    size_t numCols = sizeof(mfcc_coeffs[0]) / sizeof(mfcc_coeffs[0][0]);
+
+    // Open a file for writing
+    std::ofstream outFile("MFCC_values.csv");
+
+    // Write the matrix elements to the CSV file
+    for (size_t i = 0; i < numRows; ++i) {
+        for (size_t j = 0; j < numCols; ++j) {
+            outFile << static_cast<int>(mfcc_coeffs[i][j]); // Convert int8 to int before writing
+            if (j < numCols - 1) {
+                outFile << ",";
+            }
+        }
+        outFile << std::endl;
+    }
+
+    // Close the file
+    outFile.close();
+
+    std::cout << "MFCC_values csv file has been created." << std::endl;
+
+}
+
 
 /**
  * reshapes audio vector into a matrix where each row is one hop, so that the original audio array

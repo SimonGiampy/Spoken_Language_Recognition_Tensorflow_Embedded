@@ -131,9 +131,9 @@ float *arduinoMFCC::computeFrame() {
 }
 
 int8_t** arduinoMFCC::quantizedMFCC() {
-    int8_t** quantizedMFCC = new int8_t*[?]; //TODO: number of rows
+    int8_t** quantizedMFCC = new int8_t*[_num_filters]; //TODO: number of rows number of filters 
     for (int i = 0; i < ; i++) {
-        quantizedMFCC[i] = new int8_t[?]; //TODO: number of columns
+        quantizedMFCC[i] = new int8_t[_num_cepstral_coeffs]; //TODO: number of columns ceptrals coeff
     }
 
     // integer min-max normalization
