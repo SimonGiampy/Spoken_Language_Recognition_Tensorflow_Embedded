@@ -11,16 +11,15 @@
 // #define PI 3.1415926535897932384626433832795
 
 // constructor
-arduinoMFCC::arduinoMFCC(uint8_t num_filters, uint16_t frame_size, uint8_t hop_size, unsigned int length, uint8_t num_cepstral_coeffs, uint16_t samplerate) {
+arduinoMFCC::arduinoMFCC(uint8_t num_filters, uint16_t frame_size, uint16_t hop_size, unsigned int length,
+                        uint8_t num_cepstral_coeffs, uint16_t samplerate) {
     _num_filters = num_filters;
     _frame_size = frame_size;
     _hop_size = hop_size;
     _num_cepstral_coeffs = num_cepstral_coeffs;
     _samplerate = samplerate;
     this->_length = length;
-
-    //_frame = (float *) malloc(_frame_size * sizeof(float));
-    //_hamming_window = (float *) malloc(_frame_size * sizeof(float));
+    this->matrix_rows = _length / _hop_size - (_frame_size / _hop_size) + 1;
 
     _frame = new float[_frame_size];
     _hamming_window = new float[_frame_size];
@@ -30,34 +29,24 @@ arduinoMFCC::arduinoMFCC(uint8_t num_filters, uint16_t frame_size, uint8_t hop_s
     // frequency values range from 0 to N/2, where N is the width of the sliding window
     _mel_filter_bank = new float *[_num_filters];
     for (int i = 0; i < _num_filters; i++) {
-        _mel_filter_bank[i] = new float[_frame_size / 2];
+        _mel_filter_bank[i] = new float[_fft_bins];
     }
+
+    std::cout << "allocated mel filterbank" << std::endl;
 
     _dct_filters = new float *[_num_cepstral_coeffs];
     for (int i = 0; i < _num_cepstral_coeffs; i++) {
         _dct_filters[i] = new float[_num_filters];
     }
 
-    /*
-    _mel_filter_bank = (float**) malloc(_num_filters * _frame_size * sizeof(float));
-    //float **_mel_filter_bank = (float **)malloc(_num_filters * sizeof(float *));
-    for (uint8_t i = 0; i < _num_filters; i++)
-    {
-            _mel_filter_bank[i] = (float *) malloc((_frame_size / 2) * sizeof(float)); //
-    }
+    std::cout << "allocated dct filters" << std::endl;
 
-    //float **_dct_matrix = (float **)malloc(_mfcc_size * sizeof(float *));
-    _dct_matrix = (float**) malloc(_mfcc_size * _num_filters * sizeof(float));
-    for (uint8_t i = 0; i < _mfcc_size; i++)
-    {
-            _dct_matrix[i] = (float *)malloc(_num_filters * sizeof(float)); //
-    }
-    */
-
-    //_rmfcc_coeffs = (float *)malloc(_mfcc_size * sizeof(float));
-    //_mfcc_coeffs = (float *)malloc(_num_filters * sizeof(float));
     _mfcc_coeffs = new float[_num_cepstral_coeffs];
     _log_mel_filters = new float[_num_filters];
+    
+    _spectrum = new float[_fft_bins];
+
+    std::cout << "allocated everything" << std::endl;
 }
 
 // destructor
@@ -78,6 +67,7 @@ arduinoMFCC::~arduinoMFCC() {
 
     delete[] _mfcc_coeffs;
     delete[] _log_mel_filters;
+    delete[] _spectrum;
 }
 
 // computation of the mel-scale frequency cepstrum coefficients
@@ -86,17 +76,20 @@ int8_t** arduinoMFCC::compute(int16_t* audio) {
     // returns the entire mfcc matrix computed
 
     this->create_hamming_window();
+    std::cout << "computed hamming window" << std::endl;
     this->create_mel_filter_bank();
+    std::cout << "computed mel filterbank" << std::endl;
     this->create_dct_filters();
+    std::cout << "computed dct matrix" << std::endl;
 
     // mfcc matrix is computed as the transpose of the usual mfcc computation
     // each frame corresponds to a row in the matrix, instead of a column
-    _mfcc_matrix = new float *[_length / _hop_size - (_frame_size / _hop_size) + 1];  // number of rows = number of frames processed
+    _mfcc_matrix = new float *[this->matrix_rows];  // number of rows = number of frames processed
     
     // for each frame
     int16_t *frame_int = new int16_t[_frame_size];
-    for (int i = 0; i < this->_length / _hop_size; i+=_hop_size) {
-        std::copy(audio[i], audio[i + _frame_size], frame_int);
+    for (int i = 0; i < this->matrix_rows; i+=1) {
+        std::copy(audio + i, audio + i + _frame_size, frame_int);
 
         for (int j = 0; j < _frame_size; j++) {
             _frame[j] = (float) frame_int[j];
@@ -104,8 +97,21 @@ int8_t** arduinoMFCC::compute(int16_t* audio) {
 
         _mfcc_matrix[i] = new float[_num_cepstral_coeffs];  // number of columns = number of cepstral coefficients
         _mfcc_matrix[i] = this->computeFrame();
+
+        std::cout << "computed frame n:" << i << std::endl;
     }
+    
+    std::cout << "finished frames" << std::endl;
+
+    for (int row = 0; row < this->matrix_rows; row++) {
+        for (int col = 0; col < _num_cepstral_coeffs; col++) {
+            std::cout << _mfcc_matrix[row][col] << ", ";
+        }
+        std::cout << std::endl;
+    }
+
     delete[] frame_int;
+    delete[] audio;
 
     return this->quantizedMFCC();
 }
@@ -119,36 +125,59 @@ float *arduinoMFCC::computeFrame() {
     //  apply mel filterbank
     //  take log of energies
     //  compute discrete cosine transfrom
-    //  mean normalization
+    //  TODO: mean normalization
 
     this->pre_emphasis();
+    std::cout << "computed pre emphasis" << std::endl;
     this->apply_hamming_window();
+    std::cout << "applied hamming" << std::endl;
     this->fft_power_spectrum();
+    std::cout << "applied fft" << std::endl;
     this->apply_log_mel_filter_bank();
+    std::cout << "applied log mel" << std::endl;
     this->apply_dct();
+    std::cout << "applied dct" << std::endl;
 
     return _mfcc_coeffs;
 }
 
+// integer min-max normalization
 int8_t** arduinoMFCC::quantizedMFCC() {
-    int8_t** quantizedMFCC = new int8_t*[_num_filters]; //TODO: number of rows number of filters 
-    for (int i = 0; i < ; i++) {
-        quantizedMFCC[i] = new int8_t[_num_cepstral_coeffs]; //TODO: number of columns ceptrals coeff
+    int8_t** quantizedMFCC = new int8_t*[this->matrix_rows]; //TODO: number of rows
+    for (int i = 0; i < this->matrix_rows; i++) {
+        quantizedMFCC[i] = new int8_t[_num_cepstral_coeffs]; //TODO: number of columns
     }
-
-    // integer min-max normalization
-    for (int i = 0;) {
-        for (int j = 0;) {
-            float scaledValue =
-                quantizedMFCC[i][j] = (int8_t) scaled_value;
+    
+    float min = _mfcc_matrix[0][0], max = _mfcc_matrix[0][0];
+    for (int i = 0; i < this->matrix_rows; i++) {
+        for (int j = 0; j < _num_cepstral_coeffs; j++) {
+            if (_mfcc_matrix[i][j] < min) {
+                min = _mfcc_matrix[i][j];
+            }
+            if (_mfcc_matrix[i][j] > max) {
+                max = _mfcc_matrix[i][j];
+            }
         }
     }
+
+    for (int i = 0; i < this->matrix_rows; i++) {
+        for (int j = 0; j < _num_cepstral_coeffs; j++) {
+            quantizedMFCC[i][j] = _mfcc_matrix[i][j] / (max - min) * 256;
+            quantizedMFCC[i][j] -= (max + min) / 2.0;
+        }
+    }
+
+    std::cout << "quantized" << std::endl;
+    return quantizedMFCC;
 }
 
 // pre-emphasis filter to the frame
 void arduinoMFCC::pre_emphasis() {
+    int previous = _frame[0], temp;
     for (uint16_t j = 1; j < _frame_size; j++) {
-        _frame[j] = _frame[j] - 0.95 * _frame[j - 1];
+        temp = _frame[j];
+        _frame[j] = _frame[j] - 0.95 * previous;
+        previous = temp;
     }
 }
 
@@ -158,54 +187,42 @@ void arduinoMFCC::create_hamming_window() {
         _hamming_window[i] = 0.54 - 0.46 * cos(2 * PI * i / (_frame_size - 1));
     }
 }
-/*
-void arduinoMFCC::create_hamming_window(uint16_t _frame_size)
-{
-        for (uint16_t i = 0; i < _frame_size; i++)
-        {
-                _hamming_window[i] = 0.54 - 0.46 * cos(2 * PI * i / (_frame_size - 1));
-        }
-}
 
-void arduinoMFCC::create_hamming_window(uint16_t _frame_size, float *_hamming_window)
-{
-        for (uint16_t i = 0; i < _frame_size; i++)
-        {
-                _hamming_window[i] = 0.54 - 0.46 * cos(2 * PI * i / (_frame_size - 1));
-        }
-}
-*/
 
 // mel filters definition
 void arduinoMFCC::create_mel_filter_bank() {
-    float f_low = 300.;
-    float f_high = _samplerate / 2;  // Nyquist Frequency // added here /2
-    float mel_low_freq = 2595. * log10f(1 + (f_low / 2.) / 700.);
-    float mel_high_freq = 2595. * log10f(1 + (f_high / 2.) / 700.);
-    float *mel_f = (float *)malloc((_num_filters + 2) * sizeof(float));
-    float *hzPoints = (float *)malloc((_num_filters + 2) * sizeof(float));  // Corresponding Hz scale points
+    float f_low = 50.; // lower frequency cutoff
+    float f_high = _samplerate / 2.0;  // higher frequency cutoff
+    float mel_low_freq = 2595. * std::log10(1 + (f_low / 2.) / 700.);
+    float mel_high_freq = 2595. * std::log10(1 + (f_high / 2.) / 700.);
+
+    float *hzPoints = new float[_num_filters + 2];
+    float mel_f, freq;
+
     // Calculate Mel and Hz scale points
     float mel_freq_delta = (mel_high_freq - mel_low_freq) / (_num_filters + 1);
     for (uint8_t i = 0; i < _num_filters + 2; i++) {
-        mel_f[i] = mel_low_freq + i * mel_freq_delta;
-        hzPoints[i] = 700.0 * (powf(10, mel_f[i] / 2595.0) - 1);
+        // filter center frequencies in Hz scale
+        mel_f = mel_low_freq + i * mel_freq_delta;
+        hzPoints[i] = 700.0 * (std::pow(10, mel_f / 2595.0) - 1);
     }
+
     // Create the filter bank
     for (uint8_t i = 0; i < _num_filters; i++) {
-        for (uint16_t j = 0; j < _frame_size / 2; j++) {
-            float freq = (float)j * (_samplerate / 2) / (_frame_size / 2);
+        for (uint16_t bin = 0; bin < _fft_bins; bin++) {
+            freq = (float) bin * (_samplerate / 2.0) / (_fft_bins - 1.0);
             if (freq < hzPoints[i])
-                _mel_filter_bank[i][j] = 0;
+                _mel_filter_bank[i][bin] = 0;
             else if (freq >= hzPoints[i] && freq < hzPoints[i + 1])
-                _mel_filter_bank[i][j] = (freq - hzPoints[i]) / (hzPoints[i + 1] - hzPoints[i]);
+                _mel_filter_bank[i][bin] = (freq - hzPoints[i]) / (hzPoints[i + 1] - hzPoints[i]);
             else if (freq >= hzPoints[i + 1] && freq <= hzPoints[i + 2])
-                _mel_filter_bank[i][j] = (hzPoints[i + 2] - freq) / (hzPoints[i + 2] - hzPoints[i + 1]);
+                _mel_filter_bank[i][bin] = (hzPoints[i + 2] - freq) / (hzPoints[i + 2] - hzPoints[i + 1]);
             else
-                _mel_filter_bank[i][j] = 0;
+                _mel_filter_bank[i][bin] = 0;
         }
     }
-    free(mel_f);
-    free(hzPoints);
+    
+    delete[] hzPoints;
 }
 
 
@@ -223,7 +240,7 @@ void arduinoMFCC::create_dct_filters() {
 
 // application of the hamming window to the signal
 void arduinoMFCC::apply_hamming_window() {
-    for (uint8_t n = 0; n < _frame_size; n++) {
+    for (uint16_t n = 0; n < _frame_size; n++) {
         _frame[n] = _frame[n] * _hamming_window[n];
     }
 }
@@ -231,15 +248,15 @@ void arduinoMFCC::apply_hamming_window() {
 // apply mel filters to the signal
 void arduinoMFCC::apply_log_mel_filter_bank() {
     for (uint8_t i = 0; i < _num_filters; i++) {
-        float sum = 0.0f;
-        for (uint16_t j = 0; j < _frame_size / 2; j++) {
-            sum += _frame[j] * _mel_filter_bank[i][j];
+        float sum = 0.0;
+        for (uint16_t j = 0; j < _fft_bins; j++) {
+            sum += _spectrum[j] * _mel_filter_bank[i][j];
         }
-        /*
-        // TODO: Apply Mel-flooring
-        if (lmfbCoef[i] < 1.0) // sum < 1.0
-            lmfbCoef[i] = 1.0;
-        */
+        
+        // Apply Mel-flooring
+        if (sum < 1.0)
+            sum = 1.0;
+        
         _log_mel_filters[i] = std::log(sum);
     }
 }
@@ -247,17 +264,22 @@ void arduinoMFCC::apply_log_mel_filter_bank() {
 // computes power spectrum: magnitude of FFT of the signal windowed frame
 void arduinoMFCC::fft_power_spectrum() {
     arduinoFFT myFFTframe;
-    double *_vframe = (double *) malloc(_frame_size * sizeof(double));
-    double *_rframe = (double *) malloc(_frame_size * sizeof(double));
+    double *_vframe = new double[_frame_size];
+    double *_rframe = new double[_frame_size];
     for (uint16_t i = 0; i < _frame_size; i++) {
         _rframe[i] = (double) _frame[i];
         _vframe[i] = 0.0;
     }
+
     myFFTframe = arduinoFFT(_rframe, _vframe, _frame_size, (double)_samplerate);
     myFFTframe.Compute(FFT_FORWARD);
     myFFTframe.ComplexToMagnitude();
-    for (uint16_t i = 0; i < _frame_size; i++)
-        _frame[i] = (float) _rframe[i];
+
+    //TODO: check whether the FFT computation return an array of size fft_bins or frame_size
+    // in case it returns the frame_size, then it would be better to try to implement the fft from scratch
+    for (uint16_t i = 0; i < _fft_bins; i++) {
+        _spectrum[i] = (float) _rframe[i];
+    }
     free(_rframe);
     free(_vframe);
 }

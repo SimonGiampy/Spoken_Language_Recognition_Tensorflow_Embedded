@@ -5,21 +5,22 @@
 #include "arduinoMFCC.h"
 
 // MFCC parameters
-const int num_filters = 12;
+const int num_filters = 40;
 const int frame_size = 512;
 const int hop_size = 128;
-const int num_cepstral_coeffs = 6;
+const int num_cepstral_coeffs = 12;
 const int sample_rate = 16000;
 
 // 10 seconds audio recording at 16kHz at 2 bytes/sample
 const int seconds = 10;
-const int length = (int) sample_rate * seconds;
+const int length = sample_rate * seconds;
 int16_t *audio;
 
 // MFCC object
 arduinoMFCC *mymfcc;
 
 void readBinary(const char *filePath);
+void writeInt8ArrayToCSV(int8_t **mfcc_coeffs);
 
 int16_t **reshapeVector(int16_t *vector);
 
@@ -35,6 +36,8 @@ int main() {
     
     int8_t **mfcc_coeffs = mymfcc->compute(audio);
 
+    writeInt8ArrayToCSV(mfcc_coeffs);
+
     delete mymfcc;
 
     // create array of frames (array of arrays)
@@ -48,15 +51,17 @@ int main() {
 //Saves the mfcc_coefficients into a csv file 
 void writeInt8ArrayToCSV(int8_t **mfcc_coeffs) {
 
-  size_t numRows = sizeof(mfcc_coeffs) / sizeof(mfcc_coeffs[0]);
-    size_t numCols = sizeof(mfcc_coeffs[0]) / sizeof(mfcc_coeffs[0][0]);
+    int numRows = sizeof(mfcc_coeffs) / sizeof(mfcc_coeffs[0]);
+    int numCols = sizeof(mfcc_coeffs[0]) / sizeof(mfcc_coeffs[0][0]);
+
+    std::cout << "rows " << numRows << "cols " << numCols << std::endl;
 
     // Open a file for writing
     std::ofstream outFile("MFCC_values.csv");
 
     // Write the matrix elements to the CSV file
-    for (size_t i = 0; i < numRows; ++i) {
-        for (size_t j = 0; j < numCols; ++j) {
+    for (int i = 0; i < numRows; ++i) {
+        for (int j = 0; j < numCols; ++j) {
             outFile << static_cast<int>(mfcc_coeffs[i][j]); // Convert int8 to int before writing
             if (j < numCols - 1) {
                 outFile << ",";

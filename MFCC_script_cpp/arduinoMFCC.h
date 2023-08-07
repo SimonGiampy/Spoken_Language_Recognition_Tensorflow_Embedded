@@ -25,7 +25,7 @@
 #define arduinoMFCC_H
 
 #include <stdint.h>
-
+#include <iostream>
 #include <algorithm>
 #include <cmath>
 
@@ -35,7 +35,8 @@ class arduinoMFCC {
 public:
 
 	// Constructor
-	arduinoMFCC(uint8_t num_channels, uint16_t frame_size, uint8_t hop_size, unsigned int length, uint8_t mfcc_size, uint16_t samplerate);
+	arduinoMFCC(uint8_t num_filters, uint16_t frame_size, uint16_t hop_size, unsigned int length,
+                        uint8_t num_cepstral_coeffs, uint16_t samplerate);
 	~arduinoMFCC();
 
 	// public functions
@@ -43,33 +44,21 @@ public:
 	int8_t** compute(int16_t* audio);
 	float* computeFrame();
 
-	// void computebust(uint8_t ,uint16_t ,float , float *, float *);
-	// void computebust_dct(uint8_t ,uint8_t ,uint16_t ,float *);
-
 	void create_hamming_window(void);
-	// void create_hamming_window(uint16_t  );
-	// void create_hamming_window(uint16_t , float *);
 
 	void pre_emphasis(void);
 
 	void apply_hamming_window(void);
-	// void apply_hamming_window(float* _frame);
-	// void apply_hamming_window(float *,float *);
 
 	void create_mel_filter_bank(void);
-	// void create_mel_filter_bank(float , uint8_t  ,uint16_t , float**);
 
-	//void apply_mel_filter_bank_power(void);
 	void fft_power_spectrum(void);
 
 	void apply_log_mel_filter_bank(void);
-	// void apply_mel_filter_bank(uint8_t  , uint16_t  ,float *, float **, float *);v
 
 	void create_dct_filters(void);
-	// void create_dct_matrix(float **);
 
 	void apply_dct(void);
-	//void apply_dct(uint8_t, uint8_t, uint16_t, float**, float*, float*);
 
 	int8_t** quantizedMFCC(void);
 	
@@ -89,6 +78,9 @@ public:
 	//  each channel in the Mel-filterbank corresponds to a specific frequency range in the audio spectrum.
 	uint8_t _num_filters;
 
+	// number of bins (frequency intervals) of the FFT
+	uint8_t _fft_bins;
+
 	// window function used in digital signal processing to reduce spectral leakage when analyzing or processing a signal.
 	// window functions are applied to the data before performing a Fourier transform or other frequency analysis
 	// to minimize artifacts caused by abrupt truncation of the signal.
@@ -98,6 +90,8 @@ public:
 	//  into the Mel-frequency scale, which approximates the non-linear frequency perception of the human auditory system.
 	float** _mel_filter_bank;
 
+	// power spectrum (magnitude) of the processed signal with FFT
+	float* _spectrum;
 	
 	uint8_t _num_cepstral_coeffs;
 
@@ -108,6 +102,8 @@ private:
 
 	// matrix of size = number of frames processed (rows) x number of cepstral coefficients
 	float** _mfcc_matrix;  // final computed matrix
+
+	int matrix_rows;
 
 	//TODO: make the variables private
 };
