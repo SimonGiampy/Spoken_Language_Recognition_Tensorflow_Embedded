@@ -30,7 +30,6 @@
 #include <cmath>
 
 #include "arduinoFFT.h"
-#define AUDIO_SAMPLE_RATE_EXACT 16000
 
 class arduinoMFCC {
 public:
@@ -41,9 +40,8 @@ public:
 
 	// public functions
 
-	void compute(int16_t** audio);
-	// void compute(uint8_t ,uint16_t ,float , float *, float *);
-	float* computeFrame(void);
+	int8_t** compute(int16_t* audio);
+	float* computeFrame();
 
 	// void computebust(uint8_t ,uint16_t ,float , float *, float *);
 	// void computebust_dct(uint8_t ,uint8_t ,uint16_t ,float *);
@@ -54,11 +52,11 @@ public:
 
 	void pre_emphasis(void);
 
-	void apply_hamming_window();
+	void apply_hamming_window(void);
 	// void apply_hamming_window(float* _frame);
 	// void apply_hamming_window(float *,float *);
 
-	void create_mel_filter_bank();
+	void create_mel_filter_bank(void);
 	// void create_mel_filter_bank(float , uint8_t  ,uint16_t , float**);
 
 	//void apply_mel_filter_bank_power(void);
@@ -67,11 +65,13 @@ public:
 	void apply_log_mel_filter_bank(void);
 	// void apply_mel_filter_bank(uint8_t  , uint16_t  ,float *, float **, float *);v
 
-	void create_dct_matrix();
+	void create_dct_filters(void);
 	// void create_dct_matrix(float **);
 
-	void apply_dct();
+	void apply_dct(void);
 	//void apply_dct(uint8_t, uint8_t, uint16_t, float**, float*, float*);
+
+	int8_t** quantizedMFCC(void);
 	
 	uint8_t _hop_size;
 	uint16_t _samplerate;
@@ -80,14 +80,14 @@ public:
 
 	// log mel-scale filter bank coefficients computed from a single frame
 	// vector of length = number of filters
-	float* _mfcc_coeffs; // TODO: rename -> log_mel_fb
+	float* _log_mel_filters;
 	// final mfcc coefficients computed after applying the discrete cosine transform
 	// vector of length = number of cepstral coefficients
-	float* _rmfcc_coeffs; // TODO: rename -> mfcc
+	float* _mfcc_coeffs;
 
 	// number of triangular filters used in the Mel-filterbank to filter the power spectrum of an audio signal.
 	//  each channel in the Mel-filterbank corresponds to a specific frequency range in the audio spectrum.
-	uint8_t _num_channels; // TODO: rename -> _num_filters
+	uint8_t _num_filters;
 
 	// window function used in digital signal processing to reduce spectral leakage when analyzing or processing a signal.
 	// window functions are applied to the data before performing a Fourier transform or other frequency analysis
@@ -99,8 +99,9 @@ public:
 	float** _mel_filter_bank;
 
 	
-	uint8_t _mfcc_size; // TODO: rename -> num_cepstral_coeffs
-	float** _dct_matrix; // TODO: rename -> dct_filters
+	uint8_t _num_cepstral_coeffs;
+
+	float** _dct_filters;
 
 private:
 	unsigned int _length;  // expressed in seconds

@@ -4,15 +4,15 @@
 #include "arduinoMFCC.h"
 
 // MFCC parameters
-const int num_channels = 12;
+const int num_filters = 12;
 const int frame_size = 512;
 const int hop_size = 128;
-const int mfcc_size = 6;
+const int num_cepstral_coeffs = 6;
 const int sample_rate = 16000;
 
 // 10 seconds audio recording at 16kHz at 2 bytes/sample
 const int seconds = 10;
-const int length = (int)sample_rate * seconds;
+const int length = (int) sample_rate * seconds;
 int16_t *audio;
 
 // MFCC object
@@ -28,12 +28,11 @@ int main() {
     audio = new int16_t[length];
     readBinary(audioFilePath);
 
-    int16_t **matrix = reshapeVector(audio);
+    //int16_t **matrix = reshapeVector(audio);
 
-    mymfcc = new arduinoMFCC(num_channels, frame_size, hop_size, length, mfcc_size, sample_rate);
-    mymfcc->compute(matrix);
-
-    int8_t **mfcc_coeffs = mymfcc->quantizedMFCC();
+    mymfcc = new arduinoMFCC(num_filters, frame_size, hop_size, length, num_cepstral_coeffs, sample_rate);
+    
+    int8_t **mfcc_coeffs = mymfcc->compute(audio);
 
     delete mymfcc;
 
@@ -41,10 +40,6 @@ int main() {
     // for each frame
     //		compute mfcc
     //		return matrix and print it in csv file
-
-    for (int i = 0; i < num_channels; i++) {
-        std::cout << mfcc_coeffs[i] << std::endl;
-    }
 
     return 0;
 }
@@ -56,13 +51,13 @@ int main() {
  * this code is not to be placed on the arduino
  */
 int16_t **reshapeVector(int16_t *vector) {
-    int16_t **matrix = new int16_t *[samples / hop_size];
-    for (int i = 0; i < samples / hop_size; i++) {
+    int16_t **matrix = new int16_t *[length / hop_size];
+    for (int i = 0; i < length / hop_size; i++) {
         matrix[i] = new int16_t[hop_size];
     }
 
     int vecIndex = 0;
-    for (int i = 0; i < samples / hop_size; i++) {
+    for (int i = 0; i < length / hop_size; i++) {
         for (int j = 0; j < hop_size; j++) {
             matrix[i][j] = vector[vecIndex++];
         }
@@ -84,7 +79,7 @@ void readBinary(const char *filePath) {
         std::cerr << "Error: Unable to open the binary file." << std::endl;
     } else {
         int16_t valueInt16;
-        for (int i = 0; i < 160000; i++) {
+        for (int i = 0; i < seconds * sample_rate; i++) {
             inputFile.read(reinterpret_cast<char *>(&valueInt16), sizeof(int16_t));
             audio[i] = valueInt16;
         }
