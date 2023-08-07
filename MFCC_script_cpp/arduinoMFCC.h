@@ -29,7 +29,10 @@
 #include <algorithm>
 #include <cmath>
 
-#include "arduinoFFT.h"
+//#include "arduinoFFT.h"
+#include "kiss_fftr.h"
+
+#define PI 3.14159265358979323f
 
 class arduinoMFCC {
 public:
@@ -79,7 +82,7 @@ public:
 	uint8_t _num_filters;
 
 	// number of bins (frequency intervals) of the FFT
-	uint8_t _fft_bins;
+	uint16_t _fft_bins;
 
 	// window function used in digital signal processing to reduce spectral leakage when analyzing or processing a signal.
 	// window functions are applied to the data before performing a Fourier transform or other frequency analysis

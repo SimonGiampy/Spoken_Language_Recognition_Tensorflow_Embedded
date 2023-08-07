@@ -51,8 +51,8 @@ int main() {
 //Saves the mfcc_coefficients into a csv file 
 void writeInt8ArrayToCSV(int8_t **mfcc_coeffs) {
 
-    int numRows = sizeof(mfcc_coeffs) / sizeof(mfcc_coeffs[0]);
-    int numCols = sizeof(mfcc_coeffs[0]) / sizeof(mfcc_coeffs[0][0]);
+    int numRows = length / hop_size - (frame_size / hop_size) + 1;
+    int numCols = num_cepstral_coeffs;
 
     std::cout << "rows " << numRows << "cols " << numCols << std::endl;
 
