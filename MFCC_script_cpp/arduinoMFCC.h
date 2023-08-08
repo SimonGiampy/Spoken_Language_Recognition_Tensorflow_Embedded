@@ -64,6 +64,10 @@ public:
 	void apply_dct(void);
 
 	int8_t** quantizedMFCC(void);
+
+	void writeInt8ArrayToCSV(int8_t **mfcc_coeffs);
+	
+	void writeFloatArrayToCSV(float **mfcc_coeffs);
 	
 	uint8_t _hop_size;
 	uint16_t _samplerate;

@@ -36,7 +36,7 @@ int main() {
     
     int8_t **mfcc_coeffs = mymfcc->compute(audio);
 
-    mymfcc->writeInt8ArrayToCSV(mfcc_coeffs);
+    writeInt8ArrayToCSV(mfcc_coeffs);
 
     delete mymfcc;
 
