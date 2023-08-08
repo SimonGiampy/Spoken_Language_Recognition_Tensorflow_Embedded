@@ -1,28 +1,4 @@
-#include <fstream>
-#include <iostream>
-
-
-#include "arduinoMFCC.h"
-
-// MFCC parameters
-const int num_filters = 40;
-const int frame_size = 512;
-const int hop_size = 128;
-const int num_cepstral_coeffs = 12;
-const int sample_rate = 16000;
-
-// 10 seconds audio recording at 16kHz at 2 bytes/sample
-const int seconds = 10;
-const int length = sample_rate * seconds;
-int16_t *audio;
-
-// MFCC object
-arduinoMFCC *mymfcc;
-
-void readBinary(const char *filePath);
-void writeInt8ArrayToCSV(int8_t **mfcc_coeffs);
-
-int16_t **reshapeVector(int16_t *vector);
+#include "MFCC_Preprocessing.h"
 
 int main() {
     // Specify the path to the audio file on the SD card
@@ -32,7 +8,7 @@ int main() {
 
     //int16_t **matrix = reshapeVector(audio);
 
-    mymfcc = new arduinoMFCC(num_filters, frame_size, hop_size, length, num_cepstral_coeffs, sample_rate);
+    mymfcc = new arduinoMFCC(num_filters, frame_size, hop_size, length, num_cepstral_coeffs, frequency);
     
     int8_t **mfcc_coeffs = mymfcc->compute(audio);
 
@@ -58,13 +34,13 @@ int main() {
  */
 int16_t **reshapeVector(int16_t *vector) {
     int16_t **matrix = new int16_t *[length / hop_size];
-    for (int i = 0; i < length / hop_size; i++) {
+    for (unsigned int i = 0; i < length / hop_size; i++) {
         matrix[i] = new int16_t[hop_size];
     }
 
     int vecIndex = 0;
-    for (int i = 0; i < length / hop_size; i++) {
-        for (int j = 0; j < hop_size; j++) {
+    for (unsigned int i = 0; i < length / hop_size; i++) {
+        for (unsigned int j = 0; j < hop_size; j++) {
             matrix[i][j] = vector[vecIndex++];
         }
     }
@@ -85,7 +61,7 @@ void readBinary(const char *filePath) {
         std::cerr << "Error: Unable to open the binary file." << std::endl;
     } else {
         int16_t valueInt16;
-        for (int i = 0; i < seconds * sample_rate; i++) {
+        for (int i = 0; i < seconds * frequency; i++) {
             inputFile.read(reinterpret_cast<char *>(&valueInt16), sizeof(int16_t));
             audio[i] = valueInt16;
         }

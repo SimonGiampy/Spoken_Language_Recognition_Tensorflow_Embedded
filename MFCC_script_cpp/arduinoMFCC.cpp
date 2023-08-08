@@ -9,7 +9,6 @@
 
 #include "arduinoMFCC.h"
 #include <fstream>
-#include <iostream>
 
 
 // constructor
@@ -71,6 +70,10 @@ arduinoMFCC::~arduinoMFCC() {
 	delete[] _mfcc_coeffs;
 	delete[] _log_mel_filters;
 	delete[] _spectrum;
+}
+
+int arduinoMFCC::getMatrixRows() {
+	return this->matrix_rows;
 }
 
 // computation of the mel-scale frequency cepstrum coefficients
@@ -361,7 +364,7 @@ void arduinoMFCC::apply_dct() {
 
 void arduinoMFCC::writeInt8ArrayToCSV(int8_t **mfcc_coeffs) {
 
-    int numRows = _length / _hop_size - (_frame_size / _hop_size) + 1;
+    int numRows = getMatrixRows();
     int numCols = _num_cepstral_coeffs;
 
     std::cout << "rows " << numRows << "cols " << numCols << std::endl;
@@ -389,7 +392,7 @@ void arduinoMFCC::writeInt8ArrayToCSV(int8_t **mfcc_coeffs) {
 
 void arduinoMFCC::writeFloatArrayToCSV(float **mfcc_coeffs) {
 
-    int numRows = _length / _hop_size - (_frame_size / _hop_size) + 1;
+    int numRows = getMatrixRows();;
     int numCols = _num_cepstral_coeffs;
 
     std::cout << "rows " << numRows << "cols " << numCols << std::endl;

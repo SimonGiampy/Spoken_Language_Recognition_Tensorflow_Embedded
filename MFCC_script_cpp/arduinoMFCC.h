@@ -32,7 +32,8 @@
 //#include "arduinoFFT.h"
 #include "kiss_fftr.h"
 
-#define PI 3.14159265358979323f
+const float PI = 3.14159265358979323f;
+
 
 class arduinoMFCC {
 public:
@@ -103,6 +104,8 @@ public:
 	uint8_t _num_cepstral_coeffs;
 
 	float** _dct_filters;
+
+	int getMatrixRows(void);
 
 private:
 	unsigned int _length;  // expressed in seconds
