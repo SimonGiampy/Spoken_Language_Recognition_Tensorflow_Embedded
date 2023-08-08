@@ -1,6 +1,10 @@
-#include "arduinoMFCC.h"
+
 #include <PDM.h>
 #include <Arduino.h>
+
+#undef PI
+
+#include "arduinoMFCC.h"
 
 void onPDMdata(void);
 
@@ -13,7 +17,7 @@ short sampleBuffer[512];
 // Number of audio samples read
 int bytesRead;
 
-int audio_index;
+unsigned int audio_index;
 
 // MFCC parameters
 const uint8_t num_filters = 40;
@@ -23,20 +27,17 @@ const uint8_t num_cepstral_coeffs = 12;
 const uint16_t frequency = 16000;
 
 // 10 seconds audio recording at 16kHz at 2 bytes/sample
-const int seconds = 1;
+const float seconds = 3.5;
 const unsigned int length = frequency * seconds;
 int16_t *audio_signal;
 
 
 void setup() {
+
 	Serial.begin(9600);
-
-	delay(5000);
-
+	
 	audio_signal = new short[length];
 	audio_index = 0;
-
-	Serial.println("Started");
 
 	// Configure the data receive callback
 	PDM.onReceive(onPDMdata);
@@ -56,27 +57,34 @@ void setup() {
 }
 
 void loop() {
+	delay(5000);
+	
+	Serial.println("Start recording");
+
 	while(1) {
 		// Wait for samples to be read
-		if (bytesRead && audio_index < frequency * seconds) {
-			
+		if (bytesRead && audio_index < length) {
 			//Serial.write((byte *) sampleBuffer, bytesRead);
-			for (int i = 0; i < bytesRead; i++) {
+
+			for (int i = 0; i < bytesRead && audio_index < length; i++) {
 				audio_signal[audio_index] = sampleBuffer[i];
 				audio_index++;
 			}
 
 			// Clear the read count
 			bytesRead = 0;
+		} else if (bytesRead == 0) {
+			delay(0.05);
 		}
-		if (audio_index == frequency * seconds) {
+		if (audio_index == length) {
 			break;
 		}
 	}
 	
 	Serial.println("Done");
+	Serial.println(audio_index);
 
-	if (audio_index == frequency * seconds) {
+	if (audio_index == length) {
 		arduinoMFCC *mymfcc = new arduinoMFCC(num_filters, frame_size, hop_size, length, num_cepstral_coeffs, frequency);
 		int8_t **mfcc_coeffs = mymfcc->compute(audio_signal);
 		
