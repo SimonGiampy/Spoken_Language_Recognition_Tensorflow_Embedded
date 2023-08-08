@@ -12,7 +12,7 @@ int main() {
     
     int8_t **mfcc_coeffs = mymfcc->compute(audio);
 
-    mymfcc->writeInt8ArrayToCSV(mfcc_coeffs);
+    mymfcc->writeInt8ArrayToCSV(mfcc_coeffs, "MFCC_normalized_quantized_coefficient");
 
     delete mymfcc;
 
