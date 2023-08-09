@@ -19,8 +19,8 @@ arduinoMFCC::arduinoMFCC(uint8_t num_filters, uint16_t frame_size, uint16_t hop_
 	_hop_size = hop_size;
 	_num_cepstral_coeffs = num_cepstral_coeffs;
 	_samplerate = samplerate;
-	this->_length = length;
-	this->matrix_rows = _length / _hop_size - (_frame_size / _hop_size) + 1;
+	_length = length;
+	matrix_rows = _length / _hop_size - (_frame_size / _hop_size) + 1;
 	_fft_bins = _frame_size / 2 +1;
 
 	_frame = new float[_frame_size];
@@ -77,7 +77,7 @@ int arduinoMFCC::getMatrixRows() {
 }
 
 // computation of the mel-scale frequency cepstrum coefficients
-int8_t** arduinoMFCC::compute(int16_t* audio) {
+float** arduinoMFCC::compute(int16_t* audio) {
 	// input of an audio sample of length x seconds, structured as a matrix for memory efficiency purposes
 	// returns the entire mfcc matrix computed
 
@@ -111,21 +111,18 @@ int8_t** arduinoMFCC::compute(int16_t* audio) {
 	}
 	
 	std::cout << "finished frames" << std::endl;
-	/*
+	
 	for (int row = 0; row < this->matrix_rows; row++) {
 		for (int col = 0; col < _num_cepstral_coeffs; col++) {
 			std::cout << _mfcc_matrix[row][col] << ", ";
 		}
 		std::cout << std::endl;
 	}
-	*/
 
 	delete[] frame_int;
 	delete[] audio;
-	writeFloatArrayToCSV(_mfcc_matrix, "MFCC_float_coefficient");
-	writeFloatArrayToCSV(normalizedMFCC(), "MFCC_float_normalized_coefficient");
-
-	return this->quantizedMFCC();
+	
+	return this->normalizeMFCC();
 }
 
 float* arduinoMFCC::computeFrame() {
@@ -153,105 +150,85 @@ float* arduinoMFCC::computeFrame() {
 	return _mfcc_coeffs;
 }
 
-float** arduinoMFCC::normalizedMFCC(){
+/**
+ * computes mean-variance normalization on the mfcc matrix (z-scoring)
+*/
+float** arduinoMFCC::normalizeMFCC() {
 	std::cout << "Normalizing" << std::endl;
-
-	float* columnsIterator = new float[this->matrix_rows];
-	float *columnsMean = new float[_num_cepstral_coeffs];
-	float *columnsVar = new float[_num_cepstral_coeffs];
 
 	float** normalizedMFCC = new float*[this->matrix_rows];
 	for (int i = 0; i < this->matrix_rows; i++) {
 		normalizedMFCC[i] = new float[_num_cepstral_coeffs];
 	}
 
-	for(int col = 0; col < _num_cepstral_coeffs; col++){
+	// calculate mean and variance for each column
+	float mean, variance;
+	for(int col = 0; col < _num_cepstral_coeffs; col++) {
+		float sum = 0;
 		for(int row = 0; row < this->matrix_rows; row++){
-			columnsIterator[row] = _mfcc_matrix[row][col];
+			sum += _mfcc_matrix[row][col];
 		}
+		mean = sum / this->matrix_rows;
+		sum = 0;
+		for(int row = 0; row < this->matrix_rows; row++){
+			sum += pow(_mfcc_matrix[row][col] - mean, 2);
+		}
+		variance = sum / this->matrix_rows;
 		
-		columnsMean[col] = calculateMean(columnsIterator, this->matrix_rows);
-		columnsVar[col] = calculateVariance(columnsIterator, this->matrix_rows, columnsIterator[col]); 
-	}
-
-	for(int col = 0; col < _num_cepstral_coeffs; col++){
 		for(int row = 0; row < this->matrix_rows; row++){
-			normalizedMFCC[row][col] = (_mfcc_matrix[row][col] - columnsMean[col]) / columnsVar[col];
+			normalizedMFCC[row][col] = (_mfcc_matrix[row][col] - mean) / variance;
 		}
 	}
+	std::cout << "Normalization done" << std::endl;
 
 	return normalizedMFCC;
 }
 
-float arduinoMFCC::calculateMean(float* column, int size) {
-    float sum = 0.0;
-    for (int i = 0; i < size; ++i) {
-        sum += column[i];
-    }
-    return sum / size;
-}
-
-float arduinoMFCC::calculateVariance(float* column, int size, float mean) {
-    float sumSquares = 0.0;
-    for (int i = 0; i < size; ++i) {
-        sumSquares += (column[i] - mean) * (column[i] - mean);
-    }
-    return (sumSquares / size);
-}
 
 
-
-// integer min-max normalization
-int8_t** arduinoMFCC::quantizedMFCC() {
+// integer min-max quantization of the mfcc matrix
+int8_t** arduinoMFCC::quantizeMFCC(float** mfcc_matrix) {
 	int8_t** quantizedMFCC = new int8_t*[this->matrix_rows];
-
 	for (int i = 0; i < this->matrix_rows; i++) {
 		quantizedMFCC[i] = new int8_t[_num_cepstral_coeffs];
 	}
-	
-	float **normalized = normalizedMFCC();
 
-	float min = normalized[0][0], max = normalized[0][0];
+	// find min and max values in the matrix column-wise
+	for (int col = 0; col < _num_cepstral_coeffs; col++) {
+		float min = mfcc_matrix[0][col], max = mfcc_matrix[0][col];
 
-	for (int i = 0; i < this->matrix_rows; i++) {
-		for (int j = 0; j < _num_cepstral_coeffs; j++) {
-			if (normalized[i][j] < min) {
-				min = _mfcc_matrix[i][j];
+		for (int row = 0; row < this->matrix_rows; row++) {
+			if (mfcc_matrix[row][col] < min) {
+				min = mfcc_matrix[row][col];
 			}
-			if (normalized[i][j] > max) {
-				max = normalized[i][j];
+			if (mfcc_matrix[row][col] > max) {
+				max = mfcc_matrix[row][col];
 			}
 		}
-	}
-	// print min and max
-	std::cout << "min: " << min << ", max: " << max << std::endl;
 
-	// convert from a floating point number to a signed integer of 8 bits by centering the values around 0 and scaling them to occupy the entire range of 256 values
+		// convert from a floating point number to a signed integer of 8 bits by centering the values around 0
+		// and scaling them to occupy the entire range of 256 values
 
-	float temp, new_min = 1000.0, new_max = -1000.0;
-	for (int i = 0; i < this->matrix_rows; i++) {
-		for (int j = 0; j < _num_cepstral_coeffs; j++) {
-			temp = normalized[i][j] / (max - min) * 255.0;
+		float temp;
+		for (int row = 0; row < this->matrix_rows; row++) {
+			temp = mfcc_matrix[row][col] / (max - min) * 255.0;
 			temp -= 128.0 + min / (max - min) * 255.0;
 
-			if (temp < new_min) {
-				new_min = temp;
-			}
-			if (temp > new_max) {
-				new_max = temp;
-			}
-
-			quantizedMFCC[i][j] = static_cast<int8_t>(std::round(temp));
-			std::cout << static_cast<int>(quantizedMFCC[i][j]) << ", ";
+			quantizedMFCC[row][col] = static_cast<int8_t>(std::round(temp));
 		}
 		std::cout << std::endl;
 	}
-	// print new min and max
-	std::cout << "new min: " << new_min << ", new max: " << new_max << std::endl;
-	
+
+	// print quantized values
+	for (int row = 0; row < this->matrix_rows; row++) {
+		for (int col = 0; col < _num_cepstral_coeffs; col++) {
+			std::cout << static_cast<int>(quantizedMFCC[row][col]) << ", ";
+		}
+		std::cout << std::endl;
+	}
+
 	std::cout << "quantized" << std::endl;
 
-	
 	return quantizedMFCC;
 }
 
@@ -416,24 +393,15 @@ void arduinoMFCC::apply_dct() {
 }
 
 void arduinoMFCC::writeInt8ArrayToCSV(int8_t **mfcc_coeffs, std::string csv_name) {
-
-    int numRows = getMatrixRows();
-    int numCols = _num_cepstral_coeffs;
-
-    std::cout << "rows " << numRows << "cols " << numCols << std::endl;
-
     // Open a file for writing
     std::ofstream outFile(csv_name + ".csv");
 
     // Write the matrix elements to the CSV file
-    for (int i = 0; i < numRows; ++i) {
-        for (int j = 0; j < numCols; ++j) {
-            outFile << static_cast<int>(mfcc_coeffs[i][j]); // Convert int8 to int before writing
-            if (j < numCols - 1) {
-                outFile << ",";
-            }
+    for (int i = 0; i < getMatrixRows(); ++i) {
+        for (int j = 0; j < _num_cepstral_coeffs - 1; ++j) {
+            outFile << static_cast<int>(mfcc_coeffs[i][j]) << ", "; // Convert int8 to int before writing
         }
-        outFile << std::endl;
+        outFile << static_cast<int>(mfcc_coeffs[i][_num_cepstral_coeffs-1]) << std::endl;
     }
 
     // Close the file
@@ -444,24 +412,15 @@ void arduinoMFCC::writeInt8ArrayToCSV(int8_t **mfcc_coeffs, std::string csv_name
 }
 
 void arduinoMFCC::writeFloatArrayToCSV(float **mfcc_coeffs, std::string csv_name) {
-
-    int numRows = getMatrixRows();;
-    int numCols = _num_cepstral_coeffs;
-
-    std::cout << "rows " << numRows << "cols " << numCols << std::endl;
-
     // Open a file for writing
     std::ofstream outFile(csv_name + ".csv");
 
     // Write the matrix elements to the CSV file
-    for (int i = 0; i < numRows; ++i) {
-        for (int j = 0; j < numCols; ++j) {
-            outFile << mfcc_coeffs[i][j]; // Convert int8 to int before writing
-            if (j < numCols - 1) {
-                outFile << ",";
-            }
+    for (int i = 0; i < getMatrixRows(); ++i) {
+        for (int j = 0; j < _num_cepstral_coeffs - 1; ++j) {
+            outFile << mfcc_coeffs[i][j] << ", "; // Convert int8 to int before writing
         }
-        outFile << std::endl;
+        outFile << mfcc_coeffs[i][_num_cepstral_coeffs-1] << std::endl;
     }
 
     // Close the file

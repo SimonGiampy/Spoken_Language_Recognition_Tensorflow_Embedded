@@ -10,21 +10,20 @@ int main() {
 
     mymfcc = new arduinoMFCC(num_filters, frame_size, hop_size, length, num_cepstral_coeffs, frequency);
     
-    int8_t **mfcc_coeffs = mymfcc->compute(audio);
+    float** mfcc_coeffs = mymfcc->compute(audio);
 
-    mymfcc->writeInt8ArrayToCSV(mfcc_coeffs, "MFCC_normalized_quantized_coefficient");
+    //mymfcc->writeFloatArrayToCSV(mfcc_coeffs, "MFCC_float_coefficient");
+	mymfcc->writeFloatArrayToCSV(mfcc_coeffs, "MFCC_float_normalized_coefficient");
+
+    int8_t** quantized_mfcc_coeffs = mymfcc->quantizeMFCC(mfcc_coeffs);
+    mymfcc->writeInt8ArrayToCSV(quantized_mfcc_coeffs, "MFCC_normalized_quantized_coefficient");
 
     delete mymfcc;
 
-    // create array of frames (array of arrays)
-    // for each frame
-    //		compute mfcc
-    //		return matrix and print it in csv file
 
     return 0;
 }
 
-//Saves the mfcc_coefficients into a csv file 
 
 /**
  * reshapes audio vector into a matrix where each row is one hop, so that the original audio array

@@ -45,7 +45,7 @@ public:
 
 	// public functions
 
-	int8_t** compute(int16_t* audio);
+	float** compute(int16_t* audio);
 	float* computeFrame();
 
 	void create_hamming_window(void);
@@ -64,16 +64,11 @@ public:
 
 	void apply_dct(void);
 
-	int8_t** quantizedMFCC(void);
+	int8_t** quantizeMFCC(float** mfcc_matrix);
+	float** normalizeMFCC();
 
-	float** normalizedMFCC();
-
-	float calculateMean(float* data, int size);
-
-	float calculateVariance(float* data, int size, float mean);
 
 	void writeInt8ArrayToCSV(int8_t **mfcc_coeffs, std::string csv_name);
-	
 	void writeFloatArrayToCSV(float **mfcc_coeffs, std::string csv_name);
 	
 	uint8_t _hop_size;
