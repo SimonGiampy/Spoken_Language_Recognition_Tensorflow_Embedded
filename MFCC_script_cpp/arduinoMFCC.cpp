@@ -34,21 +34,21 @@ arduinoMFCC::arduinoMFCC(uint8_t num_filters, uint16_t frame_size, uint16_t hop_
 		_mel_filter_bank[i] = new float[_fft_bins];
 	}
 
-	std::cout << "allocated mel filterbank" << std::endl;
+	//std::cout << "allocated mel filterbank" << std::endl;
 
 	_dct_filters = new float *[_num_cepstral_coeffs];
 	for (int i = 0; i < _num_cepstral_coeffs; i++) {
 		_dct_filters[i] = new float[_num_filters];
 	}
 
-	std::cout << "allocated dct filters" << std::endl;
+	//std::cout << "allocated dct filters" << std::endl;
 
 	_mfcc_coeffs = new float[_num_cepstral_coeffs];
 	_log_mel_filters = new float[_num_filters];
 	
 	_spectrum = new float[_fft_bins];
 
-	std::cout << "allocated everything" << std::endl;
+	//std::cout << "allocated everything" << std::endl;
 }
 
 // destructor
@@ -82,11 +82,11 @@ float** arduinoMFCC::compute(int16_t* audio) {
 	// returns the entire mfcc matrix computed
 
 	this->create_hamming_window();
-	std::cout << "computed hamming window" << std::endl;
+	//std::cout << "computed hamming window" << std::endl;
 	this->create_mel_filter_bank();
-	std::cout << "computed mel filterbank" << std::endl;
+	//std::cout << "computed mel filterbank" << std::endl;
 	this->create_dct_filters();
-	std::cout << "computed dct matrix" << std::endl;
+	//std::cout << "computed dct matrix" << std::endl;
 
 
 	// mfcc matrix is computed as the transpose of the usual mfcc computation
@@ -107,17 +107,19 @@ float** arduinoMFCC::compute(int16_t* audio) {
 		float* mfcc = this->computeFrame();
 		std::copy(mfcc, mfcc + _num_cepstral_coeffs, _mfcc_matrix[i]);
 
-		std::cout << "computed frame n:" << i << std::endl;
+		//std::cout << "computed frame n:" << i << std::endl;
 	}
 	
 	std::cout << "finished frames" << std::endl;
-	
+	/*
+	// print the mfcc matrix after the computation
 	for (int row = 0; row < this->matrix_rows; row++) {
 		for (int col = 0; col < _num_cepstral_coeffs; col++) {
 			std::cout << _mfcc_matrix[row][col] << ", ";
 		}
 		std::cout << std::endl;
 	}
+	*/
 
 	delete[] frame_int;
 	delete[] audio;
@@ -134,18 +136,18 @@ float* arduinoMFCC::computeFrame() {
 	//  apply mel filterbank
 	//  take log of energies
 	//  compute discrete cosine transfrom
-	//  TODO: mean normalization
+	//  mean normalization
 
 	this->pre_emphasis();
-	std::cout << "computed pre emphasis" << std::endl;
+	//std::cout << "computed pre emphasis" << std::endl;
 	this->apply_hamming_window();
-	std::cout << "applied hamming" << std::endl;
+	//std::cout << "applied hamming" << std::endl;
 	this->fft_power_spectrum();
-	std::cout << "applied fft" << std::endl;
+	//std::cout << "applied fft" << std::endl;
 	this->apply_log_mel_filter_bank();
-	std::cout << "applied log mel" << std::endl;
+	//std::cout << "applied log mel" << std::endl;
 	this->apply_dct();
-	std::cout << "applied dct" << std::endl;
+	//std::cout << "applied dct" << std::endl;
 
 	return _mfcc_coeffs;
 }
@@ -216,17 +218,18 @@ int8_t** arduinoMFCC::quantizeMFCC(float** mfcc_matrix) {
 
 			quantizedMFCC[row][col] = static_cast<int8_t>(std::round(temp));
 		}
-		std::cout << std::endl;
+		//std::cout << std::endl;
 	}
 
 	// print quantized values
+	/*
 	for (int row = 0; row < this->matrix_rows; row++) {
 		for (int col = 0; col < _num_cepstral_coeffs; col++) {
 			std::cout << static_cast<int>(quantizedMFCC[row][col]) << ", ";
 		}
 		std::cout << std::endl;
 	}
-
+	*/
 	std::cout << "quantized" << std::endl;
 
 	return quantizedMFCC;
@@ -268,7 +271,7 @@ void arduinoMFCC::create_mel_filter_bank() {
 		hzPoints[i] = 700.0 * (std::pow(10, mel_f / 2595.0) - 1);
 	}
 
-	std::cout << "computing mel fb" << std::endl;
+	//std::cout << "computing mel fb" << std::endl;
 	// Create the filter bank
 	for (uint8_t i = 0; i < _num_filters; i++) {
 		for (uint16_t bin = 0; bin < _fft_bins; bin++) {
@@ -285,7 +288,7 @@ void arduinoMFCC::create_mel_filter_bank() {
 		}
 		//std::cout << std::endl;
 	}
-	std::cout << std::endl;
+	//std::cout << std::endl;
 	
 	delete[] hzPoints;
 }
@@ -374,7 +377,7 @@ void arduinoMFCC::fft_power_spectrum() {
 	for (uint16_t i = 0; i < _fft_bins; i++) {
 		_spectrum[i] = sqrt(cx_out[i].r * cx_out[i].r + cx_out[i].i * cx_out[i].i);
 	}
-	std::cout << " calculated spectrum" << std::endl;
+	//std::cout << " calculated spectrum" << std::endl;
 				
 	free(cfg);
 	delete[] cx_in;

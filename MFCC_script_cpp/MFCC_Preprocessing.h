@@ -1,5 +1,7 @@
 #include <fstream>
 #include <iostream>
+#include <sstream>
+#include <string>
 
 #include "arduinoMFCC.h"
 
@@ -13,7 +15,7 @@ const uint16_t frequency = 16000;
 // 10 seconds audio recording at 16kHz at 2 bytes/sample
 const int seconds = 10;
 const unsigned int length = frequency * seconds;
-int16_t *audio;
+
 
 // MFCC object
 arduinoMFCC *mymfcc;
@@ -21,5 +23,11 @@ arduinoMFCC *mymfcc;
 void readBinary(const char *filePath);
 
 int16_t **reshapeVector(int16_t *vector);
+
+void compute_mfcc_save(int16_t* audio_sample, std::string lang, int sample_number);
+std::string getCurrentPath(void);
+void elaborate_dataset(std::string lang);
+   
+
 
 int main(void);
