@@ -54,3 +54,5 @@ dkms.conf
 rec/
 samples_tests/
 libraries/
+datasets/
+.vscode/
