@@ -122,7 +122,7 @@ float** arduinoMFCC::compute(int16_t* audio) {
 	*/
 
 	delete[] frame_int;
-	delete[] audio;
+	//delete[] audio;
 	
 	return this->normalizeMFCC();
 }
