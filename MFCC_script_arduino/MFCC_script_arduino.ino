@@ -2,8 +2,6 @@
 #include <PDM.h>
 #include <Arduino.h>
 
-#undef PI
-
 #include "arduinoMFCC.h"
 
 void onPDMdata(void);
@@ -17,26 +15,29 @@ short sampleBuffer[512];
 // Number of audio samples read
 int bytesRead;
 
-unsigned int audio_index;
-
 // MFCC parameters
 const uint8_t num_filters = 40;
 const uint16_t frame_size = 512;
 const uint16_t hop_size = 128;
-const uint8_t num_cepstral_coeffs = 12;
+const uint8_t num_cepstral_coeffs = 13;
 const uint16_t frequency = 16000;
 
 // 10 seconds audio recording at 16kHz at 2 bytes/sample
 const float seconds = 3.5;
 const unsigned int length = frequency * seconds;
-int16_t *audio_signal;
+
+int16_t **audio_signal;
+unsigned int audio_index;
 
 
 void setup() {
 
 	Serial.begin(9600);
 	
-	audio_signal = new short[length];
+	audio_signal = new short*[length / hop_size];
+	for (int i = 0; i < length / hop_size; i++) {
+		audio_signal[i] = new short[hop_size];
+	}
 	audio_index = 0;
 
 	// Configure the data receive callback
@@ -62,12 +63,15 @@ void loop() {
 	Serial.println("Start recording");
 
 	while(1) {
+		
 		// Wait for samples to be read
 		if (bytesRead && audio_index < length) {
 			//Serial.write((byte *) sampleBuffer, bytesRead);
+			
+			// fill up the matrix with the audio signal chunk collected
 
 			for (int i = 0; i < bytesRead && audio_index < length; i++) {
-				audio_signal[audio_index] = sampleBuffer[i];
+				audio_signal[(int) audio_index / hop_size][audio_index % hop_size] = sampleBuffer[i];
 				audio_index++;
 			}
 
@@ -86,16 +90,14 @@ void loop() {
 
 	if (audio_index == length) {
 		arduinoMFCC *mymfcc = new arduinoMFCC(num_filters, frame_size, hop_size, length, num_cepstral_coeffs, frequency);
-		int8_t **mfcc_coeffs = mymfcc->compute(audio_signal);
+
+		float **mfcc_coeffs = mymfcc->compute(audio_signal);
 		
-		for (int i = 0; i < mymfcc->getMatrixRows(); i++) {
-			for (int j = 0; j < num_cepstral_coeffs; j++) {
-				Serial.print(mfcc_coeffs[i][j]);
-				Serial.print(" ");
-			}
-			Serial.println();
-		}
-		Serial.println();
+		float** mfcc_coeffs_norm = mymfcc->normalize();
+
+		int8_t **mfcc_coeffs_quant = mymfcc->quantize();
+		
+		delete mymfcc;
 	}
 	while(1);
 }
