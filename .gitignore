@@ -55,4 +55,6 @@ rec/
 samples_tests/
 libraries/
 datasets/
+
+**/.ipynb_checkpoints/*
 .vscode/
