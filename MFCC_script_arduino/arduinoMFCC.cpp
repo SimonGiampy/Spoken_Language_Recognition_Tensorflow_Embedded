@@ -228,7 +228,7 @@ void arduinoMFCC::pre_emphasis() {
 	int previous = _frame[0], temp;
 	for (uint16_t j = 1; j < _frame_size; j++) {
 		temp = _frame[j];
-		_frame[j] = _frame[j] - 0.95 * previous;
+		_frame[j] = _frame[j] - 0.97 * previous;
 		previous = temp;
 	}
 }
@@ -262,7 +262,7 @@ void arduinoMFCC::create_mel_filter_bank() {
 
 	//PRINT_DEBUG("computing mel fb\n");
 
-	uint8_t start_index, end_index;
+	uint16_t start_index, end_index;
 	// Create the filter bank memory efficient structure
 	for (uint8_t i = 0; i < _num_filters; i++) {
 

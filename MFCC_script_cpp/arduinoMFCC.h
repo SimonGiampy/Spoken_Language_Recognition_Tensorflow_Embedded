@@ -37,7 +37,7 @@
 #include <Arduino.h>
 #undef PI // redefinition of PI
 
-#define PRINT_DEBUG(x) if(ENABLE_DEBUG) Serial.print(String(x));
+#define PRINT_DEBUG(x) if(ENABLE_DEBUG) Serial.print((std::string(x)).c_str())
 
 #else // pc specific code for debugging
 #include <iostream>
@@ -111,7 +111,7 @@ private:
 
 	int _matrix_rows; // number of rows of the computed MFCC matrix (time on y axis)
 
-	uint8_t _hop_size; // size of the hop between two consecutive frames
+	uint16_t _hop_size; // size of the hop between two consecutive frames
 	uint16_t _samplerate; // sampling rate of the audio signal 
 	float* _frame;         // array holding the current frame being processed
 	uint16_t _frame_size;  // must be integer multiple of hop_size
@@ -146,8 +146,8 @@ private:
 
 	// memory-efficient structure for storing the mel filter bank
 	struct filterbank_filter {
-		uint8_t start_index;
-		uint8_t end_index;
+		uint16_t start_index;
+		uint16_t end_index;
 		float* filter;
 	};
 

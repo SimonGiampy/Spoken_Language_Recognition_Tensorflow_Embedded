@@ -15,8 +15,8 @@
 #define _kiss_fft_guts_h
 
 #include "kiss_fft.h"
-#include "kiss_fft_log.h"
-#include <limits.h>
+//#include "kiss_fft_log.h"
+//#include <limits.h>
 
 #define MAXFACTORS 32
 /* e.g. an fft of length 128 has 4 factors

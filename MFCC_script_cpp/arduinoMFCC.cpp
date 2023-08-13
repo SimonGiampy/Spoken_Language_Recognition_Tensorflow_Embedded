@@ -115,11 +115,11 @@ float** arduinoMFCC::compute(int16_t** audio) {
 	// returns the entire mfcc matrix computed as floating point numbers
 
 	this->create_hamming_window();
-	//PRINT_DEBUG("computed hamming window\n");
+	PRINT_DEBUG("computed hamming window\n");
 	this->create_mel_filter_bank();
-	//PRINT_DEBUG("computed mel filterbank\n");
+	PRINT_DEBUG("computed mel filterbank\n");
 	this->create_dct_filters();
-	//PRINT_DEBUG("computed dct matrix\n");
+	PRINT_DEBUG("computed dct matrix\n");
 
 
 	// mfcc matrix is computed as the transpose of the usual mfcc computation
@@ -172,7 +172,7 @@ float** arduinoMFCC::compute(int16_t** audio) {
 			_mfcc_matrix[i][el] = mfcc[el];
 		}
 		
-		//PRINT_DEBUG("computed frame n: " + std::to_string(i) + "\n");
+		PRINT_DEBUG("computed frame n: " + std::to_string(i) + "\n");
 	}
 
 	PRINT_DEBUG("finished frames computation\n");
@@ -228,7 +228,7 @@ void arduinoMFCC::pre_emphasis() {
 	int previous = _frame[0], temp;
 	for (uint16_t j = 1; j < _frame_size; j++) {
 		temp = _frame[j];
-		_frame[j] = _frame[j] - 0.95 * previous;
+		_frame[j] = _frame[j] - 0.97 * previous;
 		previous = temp;
 	}
 }
@@ -262,7 +262,7 @@ void arduinoMFCC::create_mel_filter_bank() {
 
 	//PRINT_DEBUG("computing mel fb\n");
 
-	uint8_t start_index, end_index;
+	uint16_t start_index, end_index;
 	// Create the filter bank memory efficient structure
 	for (uint8_t i = 0; i < _num_filters; i++) {
 
