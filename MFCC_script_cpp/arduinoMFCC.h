@@ -30,7 +30,7 @@
 #include "kiss_fftr.h"
 
 // shortcut for enabling / disabling printing debug messages
-#define ENABLE_DEBUG 1
+#define ENABLE_DEBUG 0
 
 
 #ifdef ARDUINO // arduino - specific code for debugging and includes

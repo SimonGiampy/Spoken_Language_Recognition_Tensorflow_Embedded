@@ -2,32 +2,33 @@
  
 
 // path of the ita and eng dataset to read from
-std::string datasets_path = getCurrentPath() + "datasets\\";
+std::string datasets_path = getCurrentPath() + "datasets/";
 
 int main() {
-
+    /*
+    // read audio test file and generate mfcc matrix from it, for testing purposes
 	audio_test = new int16_t[length];
     readBinary("test_audio.bin");
 	int16_t **audio_test_matrix = reshapeVector(audio_test);
 	delete[] audio_test;  // frees from memory original audio vector
     compute_mfcc_save(audio_test_matrix);
-	
+	*/
 
-    /*
+    
     // create entire dataset of csv files containing the MFCC coefficients
     // create array of languages to elaborate: ita, eng
-    std::string languages[2] = {"ita", "eng"};
-    for (int i = 0; i < languages->size(); i++) {
-        elaborate_dataset(languages[i]);
+    std::string split[2] = {"train", "validation"};
+    for (int i = 0; i < split->size(); i++) {
+        elaborate_dataset(split[i]);
     }
-    */
+    
 
     return 0;
 }
 
-void elaborate_dataset(std::string lang) {
+void elaborate_dataset(std::string split) {
     // read csv file containing the arrays of integers representing the audio samples
-    std::string audio_path = datasets_path + "dataset_" + lang + ".csv";
+    std::string audio_path = datasets_path + "dataset_" + split + ".csv";
 
     std::cout << "reading from: " << audio_path << std::endl;
 
@@ -39,12 +40,12 @@ void elaborate_dataset(std::string lang) {
         return;
     }
 
-    std::string line;
+    std::string line, lang;
     int16_t* dataArray = new int16_t[length];
-    int sample_number = 0;
+    int sample_number = 1;
 
     // Read and process each line
-    std::getline(inputFile, line); // this is the header
+    //std::getline(inputFile, line); // this is for skipping the header
 
     while (std::getline(inputFile, line)) {
         std::cout << "sample number: " << sample_number << std::endl;
@@ -53,6 +54,10 @@ void elaborate_dataset(std::string lang) {
         std::string cell;
 
         int i = 0;
+        std::getline(lineStream, cell, ',');  // first cell contains language label
+        lang = cell;
+        std::getline(lineStream, cell, ',');  // second cell contains speaker label
+
         // Parse each comma and space-separated cell in the line
         while (std::getline(lineStream, cell, ',')) {
 
@@ -64,9 +69,7 @@ void elaborate_dataset(std::string lang) {
                 start = start + 2;
             } else if (cell[end] == '"') {
                 end = end - 2;
-            } else if (cell[0] == 'i' || cell[0] == 'e') {
-                break;
-            }
+            } 
 
             if (start != std::string::npos && end != std::string::npos) {
                 dataArray[i] = std::stoi(cell.substr(start, end - start + 1));
@@ -74,7 +77,13 @@ void elaborate_dataset(std::string lang) {
             i++;
         }
 
-        compute_mfcc_save(reshapeVector(dataArray), lang, sample_number);
+        char formattedString[4 + 1];  // +1 for null-terminator
+        snprintf(formattedString, sizeof(formattedString), "%04d", sample_number);
+        std::string formatted(formattedString);
+        std::string audio_name = std::string(datasets_path + split + "/" +"mfcc_" + lang + "_" + formatted + ".csv");
+        
+        std::cout << "computing mfcc " << sample_number << std::endl;
+        compute_mfcc_save(reshapeVector(dataArray), audio_name);
 
         sample_number++;
     }
@@ -84,22 +93,18 @@ void elaborate_dataset(std::string lang) {
 
 }
 
-void compute_mfcc_save(int16_t** audio_sample, std::string lang, int sample_number) {
-    std::cout << "computing mfcc " << sample_number << std::endl;
+void compute_mfcc_save(int16_t** audio_sample, std::string file_name) {
     mymfcc = new arduinoMFCC(num_filters, frame_size, hop_size, length, num_cepstral_coeffs, frequency);
 
     float** mfcc_coeffs = mymfcc->compute(audio_sample);
+
+    float** norm_mfcc_coeffs = mymfcc->normalizeMFCC();
     
     int8_t** quantized_mfcc_coeffs = mymfcc->quantizeMFCC();
 
-    char formattedString[4 + 1];  // +1 for null-terminator
-    snprintf(formattedString, sizeof(formattedString), "%04d", sample_number);
-    std::string formatted(formattedString);
-    std::string audio_name = std::string(datasets_path + "mfcc_q_" + lang + "_" + formatted + ".csv");
+    std::cout << "saving mfcc to: " << file_name << std::endl;
 
-    std::cout << "saving mfcc to: " << audio_name << std::endl;
-
-    writeInt8ArrayToCSV(quantized_mfcc_coeffs, audio_name);
+    writeInt8ArrayToCSV(quantized_mfcc_coeffs, file_name);
 
     delete mymfcc;
 }
