@@ -18,7 +18,7 @@ int main() {
     // create entire dataset of csv files containing the MFCC coefficients
     // create array of languages to elaborate: ita, eng
     std::string split[2] = {"train", "validation"};
-    for (int i = 0; i < split->size(); i++) {
+    for (unsigned int i = 0; i < 2; i++) {
         elaborate_dataset(split[i]);
     }
     
@@ -29,7 +29,6 @@ int main() {
 void elaborate_dataset(std::string split) {
     // read csv file containing the arrays of integers representing the audio samples
     std::string audio_path = datasets_path + "dataset_" + split + ".csv";
-
     std::cout << "reading from: " << audio_path << std::endl;
 
     // Open the CSV file for reading
@@ -42,7 +41,7 @@ void elaborate_dataset(std::string split) {
 
     std::string line, lang;
     int16_t* dataArray = new int16_t[length];
-    int sample_number = 1;
+    short sample_number = 1;
 
     // Read and process each line
     //std::getline(inputFile, line); // this is for skipping the header
@@ -62,8 +61,8 @@ void elaborate_dataset(std::string split) {
         while (std::getline(lineStream, cell, ',')) {
 
             // Remove leading and trailing spaces
-            int start = cell.find_first_not_of(' ');
-            int end = cell.find_last_not_of(' ');
+            unsigned int start = cell.find_first_not_of(' ');
+            unsigned int end = cell.find_last_not_of(' ');
 
             if (cell[0] == '"') {
                 start = start + 2;
@@ -77,7 +76,7 @@ void elaborate_dataset(std::string split) {
             i++;
         }
 
-        char formattedString[4 + 1];  // +1 for null-terminator
+        char formattedString[7];  // +1 for null-terminator
         snprintf(formattedString, sizeof(formattedString), "%04d", sample_number);
         std::string formatted(formattedString);
         std::string audio_name = std::string(datasets_path + split + "/" +"mfcc_" + lang + "_" + formatted + ".csv");
@@ -146,7 +145,7 @@ std::string getCurrentPath() {
  * this code is not to be placed on the arduino
  */
 int16_t **reshapeVector(int16_t *vector) {
-	int matrix_height = length / hop_size;
+	unsigned int matrix_height = length / hop_size;
     int16_t **matrix = new int16_t *[matrix_height];
     for (unsigned int i = 0; i < matrix_height; i++) {
         matrix[i] = new int16_t[hop_size];

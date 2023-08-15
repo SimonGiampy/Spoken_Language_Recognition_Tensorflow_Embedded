@@ -3,7 +3,7 @@
 #include <sstream>
 #include <string>
 
-#include "arduinoMFCC.h"
+#include <arduinoMFCC/arduinoMFCC.h>
 
 // MFCC parameters
 const uint8_t num_filters = 40;
