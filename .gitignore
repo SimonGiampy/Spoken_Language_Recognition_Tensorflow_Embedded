@@ -53,7 +53,12 @@ dkms.conf
 
 rec/
 samples_tests/
-libraries/
+
+libraries/*
+!libraries/arduinoMFCC/
+
+
+
 datasets/
 
 **/.ipynb_checkpoints/*
