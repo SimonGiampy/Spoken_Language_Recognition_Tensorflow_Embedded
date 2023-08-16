@@ -63,7 +63,6 @@ void setup() {
 	
 
 	Serial.begin(9600);
-	delay(5000);
 
 	// initialize SD card
 	Serial.print("Initializing SD card...");
@@ -72,7 +71,8 @@ void setup() {
 		return;
 	}
 	Serial.println("initialization done.");
-
+	lcd.setCursor(0, 0); // first row
+	lcd.print("initialized");
 	
 	// Configure the data receive callback
 	PDM.onReceive(onPDMdata);
@@ -116,7 +116,7 @@ void loop() {
 
 		// Wait for samples to be read
 		long time, start = millis();
-		while (millis() - start < 5000) {
+		while (millis() - start < 60000) {
 			// print the number of seconds since reset:
 			time = (millis() - start) /1000;
 			lcd.setCursor(0, 1);
