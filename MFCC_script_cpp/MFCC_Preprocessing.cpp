@@ -44,7 +44,7 @@ void elaborate_dataset(std::string split) {
     short sample_number = 1;
 
     // Read and process each line
-    //std::getline(inputFile, line); // this is for skipping the header
+    std::getline(inputFile, line); // this is for skipping the header
 
     while (std::getline(inputFile, line)) {
         std::cout << "sample number: " << sample_number << std::endl;
