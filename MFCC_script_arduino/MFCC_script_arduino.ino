@@ -24,9 +24,10 @@ namespace {
 	TfLiteTensor* input = nullptr;
 	TfLiteTensor* output = nullptr;
 
-	constexpr int kTensorArenaSize = 5000;
+	constexpr int kTensorArenaSize = 105000;
 	// Keep aligned to 16 bytes for CMSIS
-	alignas(16) uint8_t tensor_arena[kTensorArenaSize];
+	//alignas(16) uint8_t tensor_arena[kTensorArenaSize];
+	uint8_t *tensor_arena;
 }  // namespace
 
 
@@ -46,14 +47,14 @@ short sampleBuffer[512];
 int bytesRead;
 
 // MFCC parameters
-const uint8_t num_filters = 30;
+const uint8_t num_filters = 40;
 const uint16_t frame_size = 512;
 const uint16_t hop_size = 256;
 const uint8_t num_cepstral_coeffs = 12;
 const uint16_t frequency = 16000;
 
 // 10 seconds audio recording at 16kHz at 2 bytes/sample
-const float seconds = 4;
+const float seconds = 5.6;
 const unsigned int length = frequency * seconds;
 
 // MFCC object
@@ -98,6 +99,9 @@ void loop() {
 	MicroPrintf("Start recording");
 
 	int8_t** quantized_mfcc = compute_mfcc();
+
+	// dynamic tensor arena allocation
+	tensor_arena = new uint8_t[kTensorArenaSize];
 
 	tflite::InitializeTarget(); // target-specific code
 
@@ -145,7 +149,6 @@ void loop() {
     }
 
 	MicroPrintf("allocated tensors");
-	MicroPrintf("arena: " + static_interpreter.arena_used_bytes());
 
     // Obtain pointers to the model's input and output tensors.
     input = interpreter->input(0);
@@ -225,7 +228,15 @@ int8_t** compute_mfcc() {
 	mymfcc->normalizeMFCC();
 
 	int8_t** quantized_mfcc = mymfcc->quantizeMFCC();
-	
+
+	// print the quantized MFCC with micro printf
+	for (int i = 0; i < mfcc_matrix_rows; i++) {
+		for (int j = 0; j < mfcc_matrix_cols; j++) {
+			MicroPrintf("%d, ", quantized_mfcc[i][j]);
+		}
+		MicroPrintf("\n");
+	}
+	MicroPrintf("\n");
 	delete mymfcc;
 
 	MicroPrintf("completed mfcc computation");
