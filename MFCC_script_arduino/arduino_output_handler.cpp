@@ -13,11 +13,13 @@ See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
 
-#include "constants.h"
 #include "output_handler.h"
-#include "tensorflow/lite/micro/micro_log.h"
-
+#include <Arduino.h>
 
 void HandleOutput(int8_t* output_prediction) {
-	PRINT_DEBUG("output 0 = " + std::to_string(output_prediction[0]) + "; output 1 = " + std::to_string(output_prediction[1]) + ".\n");
+	Serial.print("output 0 = ");
+	Serial.print(output_prediction[0]);
+	Serial.print("; output 1 = ");
+	Serial.print(output_prediction[1]);
+	Serial.println(".");
 }

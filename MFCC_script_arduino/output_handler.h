@@ -16,23 +16,6 @@ limitations under the License.
 
 #include "tensorflow/lite/c/common.h"
 
-
-// shortcut for enabling / disabling printing debug messages
-#define ENABLE_DEBUG 1
-
-
-#ifdef ARDUINO // arduino - specific code for debugging and includes
-#include <Arduino.h>
-#undef PI // redefinition of PI
-#define PRINT_DEBUG(x) if(ENABLE_DEBUG) Serial.print((std::string(x)).c_str())
-
-#else // pc specific code for debugging
-#include <iostream>
-#define PRINT_DEBUG(x) if(ENABLE_DEBUG) std::cout << x;
-#endif
-
-
-
 // Called by the main loop to produce some output based on the x and y values
 void HandleOutput(int8_t* output_prediction);
 
