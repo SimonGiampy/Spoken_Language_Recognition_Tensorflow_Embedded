@@ -51,6 +51,8 @@ Module.symvers
 Mkfile.old
 dkms.conf
 
+rec_train/
+rec_test/
 rec/
 samples_tests/
 

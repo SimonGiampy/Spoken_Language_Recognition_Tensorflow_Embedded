@@ -17,7 +17,8 @@ int main() {
     
     // create entire dataset of csv files containing the MFCC coefficients
     // create array of languages to elaborate: ita, eng
-    std::string split[2] = {"train", "validation"};
+	//std::string split[2] = {"train", "validation"};
+    std::string split[2] = {"test_known_speakers_noisy", "test_unheard_speakers"};
     for (unsigned int i = 0; i < 2; i++) {
         elaborate_dataset(split[i]);
     }
