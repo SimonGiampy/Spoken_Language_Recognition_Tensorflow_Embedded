@@ -16,10 +16,35 @@ limitations under the License.
 #include "output_handler.h"
 #include <Arduino.h>
 
-void HandleOutput(int8_t* output_prediction) {
-	Serial.print("output 0 = ");
-	Serial.print(output_prediction[0]);
-	Serial.print("; output 1 = ");
-	Serial.print(output_prediction[1]);
+String HandleOutput(int8_t* output_prediction, float scale, int zero_point) {
+
+	float y_predicted[3];
+	for (int i = 0; i < 3; i++) {
+		y_predicted[i] = round( ((float) output_prediction[i]) / scale) + (float) zero_point;
+	}
+
+	Serial.print("output 0 (ita) = ");
+	Serial.print(y_predicted[0], 4);
+	Serial.print("; output 1 (eng) = ");
+	Serial.print(y_predicted[1], 4);
+	Serial.print("; output 2 (fra) = ");
+	Serial.print(y_predicted[2], 4);
 	Serial.println(".");
+
+	
+	// compute argmax of y predicted
+	float max = y_predicted[0];
+	int argmax = 0;
+	for (int i = 1; i < 3; i++) {
+		if (y_predicted[i] > max) {
+			max = y_predicted[i];
+			argmax = i;
+		}
+	}
+
+	// show on lcd first 2 max probabilities
+	String langs[3] = { "ita", "eng", "fra" };
+
+	return langs[argmax];
+	
 }

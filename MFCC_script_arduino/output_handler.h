@@ -16,6 +16,7 @@ limitations under the License.
 
 #include "tensorflow/lite/c/common.h"
 
-// Called by the main loop to produce some output based on the x and y values
-void HandleOutput(int8_t* output_prediction);
+#include <Arduino.h>
 
+// Called by the main loop to produce some output based on the x and y values
+String HandleOutput(int8_t* output_prediction, float scale, int zero_point);
