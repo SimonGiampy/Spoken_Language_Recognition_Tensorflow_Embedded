@@ -118,9 +118,9 @@ void loop() {
 		long time, start = millis();
 		while (millis() - start < 60000) {
 			// print the number of seconds since reset:
-			time = (millis() - start) /1000;
-			lcd.setCursor(0, 1);
-			lcd.print(time);
+			//time = (millis() - start) /1000;
+			//lcd.setCursor(0, 1);
+			//lcd.print(time);
 
 			if (bytesRead) {
 				//Serial.write((byte *) sampleBuffer, bytesRead);
