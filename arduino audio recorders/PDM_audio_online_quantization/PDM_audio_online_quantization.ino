@@ -24,6 +24,9 @@ static const int frequency = 16000;
 short sampleBuffer[512];
 int8_t bytesBuffer[512];
 
+int8_t* bytes_collected;
+int val;
+
 // Number of audio samples read
 int bytesRead;
 
@@ -46,15 +49,40 @@ void setup() {
 		Serial.println("Failed to start PDM!");
 		while (1);
 	}
+
+	bytes_collected = new int8_t[20 * 16000];
 }
 
 void loop() {
-	// Wait for samples to be read
-	if (bytesRead) {
-		Serial.write((byte *) bytesBuffer, bytesRead);
-		// Clear the read count
+	delay(5000);
+	while (bytesRead!=0) {
 		bytesRead = 0;
 	}
+	val = 0;
+	Serial.println("started ");
+	unsigned long startMillis = millis();
+	while (millis() - startMillis < 10000) {
+		// Wait for samples to be read
+		if (bytesRead) {
+			//Serial.write((byte *) bytesBuffer, bytesRead);
+			
+			for (int i = 0; i < bytesRead; i++) {
+				bytes_collected[val] = (int8_t) sampleBuffer[i] / 255;
+				val++;
+			}
+			Serial.print("collected\n");
+			Serial.println(millis() - startMillis);
+			
+			// Clear the read count
+			bytesRead = 0;
+
+		} else {
+			delay(0.05);
+		}
+	}
+	Serial.println("finished");
+	Serial.println(val);
+	
 }
 
 /**
@@ -69,10 +97,4 @@ void onPDMdata() {
 	// Read into the sample buffer
 	// 16-bit, 2 bytes per sample
 	PDM.read(sampleBuffer, bytesRead);
-
-	float scale = 65535.0;
-	bytesRead = bytesRead >> 1;
-	for (int i = 0; i < bytesRead; i+=1) {
-		bytesBuffer[i] = (int8_t) ((float) (sampleBuffer[i]) * (256.0 / scale));
-	}
 }

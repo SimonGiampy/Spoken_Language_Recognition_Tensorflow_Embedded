@@ -24,17 +24,21 @@ namespace {
 	TfLiteTensor* input = nullptr;
 	TfLiteTensor* output = nullptr;
 
-	constexpr int kTensorArenaSize = 115000;
+	constexpr int tensorArenaSize = 115000;
 	// Keep aligned to 16 bytes for CMSIS
-	//alignas(16) uint8_t tensor_arena[kTensorArenaSize];
 	uint8_t *tensor_arena;
 }  // namespace
 
 
 int8_t** quantized_mfccs;
 
+// features computation
 int8_t** compute_mfcc(void);
 
+// inference function using tensorflow lite for microcontrollers
+String tfmicro_inference(void);
+
+// callback function to process the data from the PDM microphone
 void onPDMdata(void);
 
 // default number of output channels
@@ -79,6 +83,7 @@ void setup() {
 	pinMode(ledPin, OUTPUT); // initialize the LED pin as an output:
 	pinMode(buttonPin, INPUT); // initialize the pushbutton pin as an input:
 	
+	// memory allocation for the audio signal shaped as 2d vector
 	audio_signal = new short*[length / hop_size];
 	for (unsigned int i = 0; i < length / hop_size; i++) {
 		audio_signal[i] = new short[hop_size];
@@ -103,7 +108,7 @@ void setup() {
 
 	lcd.begin(16, 2);
 	lcd.display();
-	analogWrite(A1, 128); // contrast setting
+	analogWrite(A1, 128); // contrast setting for lcd display
 }
 
 void loop() {
@@ -135,6 +140,79 @@ void loop() {
 	lcd.setCursor(0,0);
 	lcd.print("inference...");
 
+	String prediction = tfmicro_inference(); // inference function
+   
+	MicroPrintf("final output computed\n");
+
+	lcd.clear();
+	lcd.setCursor(0, 0);
+	lcd.print("predicted:");
+	lcd.setCursor(0, 1);
+	lcd.print(prediction);
+
+	while(1); // blocks new inferences
+}
+
+// records audio and stores it into a 2d vector for memory efficiency purposes
+// computes MFCC features from the recorded audio signal
+// finally returns the quantized MFCC features
+int8_t** compute_mfcc() {
+
+	lcd.setCursor(0, 0);
+	lcd.print("Recording");
+
+	while(1) {
+		// Wait for samples to be read
+		if (bytesRead && audio_index < length) {
+			//Serial.write((byte *) sampleBuffer, bytesRead);
+			
+			// fill up the matrix with the audio signal chunk collected
+			for (int i = 0; i < (bytesRead >> 1) && audio_index < length; i++) {
+				audio_signal[(int) audio_index / hop_size][audio_index % hop_size] = sampleBuffer[i];
+				audio_index++;
+			}
+
+			// Clear the read count
+			bytesRead = 0;
+		} else if (bytesRead == 0) {
+			// small delay to create some busy waiting time. This is needed so to not block the CPU
+			// in this loop, and let it run the interrupt service routine onPDMdata(), which will
+			// fill up the sample buffer and collect audio samples.
+			// The ISR is executed only when the main processor is in idle waiting for another interrupt
+			// to be handled, such as a waiting for a timer to expire or serial data communication.
+			delay(0.05); 
+		}
+		if (audio_index == length) {
+			break; // audio recording completed
+		}
+	}
+	
+	MicroPrintf("Done\n");
+
+	lcd.clear();
+	lcd.setCursor(0, 0);
+	lcd.print("Computing MFCC");
+
+	digitalWrite(ledPin, LOW); // stopped audio recording
+
+	// when audio is collected, computes MFCC
+	arduinoMFCC *mymfcc = new arduinoMFCC(num_filters, frame_size, hop_size, length, num_cepstral_coeffs, frequency);
+
+	mymfcc->compute(audio_signal);
+	
+	mymfcc->normalizeMFCC();
+
+	int8_t** quantized_mfcc = mymfcc->quantizeMFCC();
+
+	delete mymfcc;
+
+	MicroPrintf("completed mfcc computation\n");
+	return quantized_mfcc;
+}
+
+// inference function using tensorflow lite for microcontrollers
+// allocates tensor arena, loads model and runs inference with quantized integer input, output and ops
+void tfmicro_inference() {
 	// dynamic tensor arena allocation
 	tensor_arena = new uint8_t[kTensorArenaSize];
 
@@ -146,8 +224,6 @@ void loop() {
     // copying or parsing, it's a very lightweight operation.
     model = tflite::GetModel(_____model_lite_CNN_model_tflite);
     if (model->version() != TFLITE_SCHEMA_VERSION) {
-        //PRINT_DEBUG("Model provided is schema version" + std::to_string(model->version()) +
-		// " not equal to supported version " + std::to_string(TFLITE_SCHEMA_VERSION));
 		MicroPrintf("Model provided is schema version %d not equal to supported version %d.\n",
         model->version(), TFLITE_SCHEMA_VERSION);
         return;
@@ -161,12 +237,12 @@ void loop() {
 	// incur some penalty in code space for op implementations that are not
 	// needed by this graph.
 	static tflite::MicroMutableOpResolver<6> micro_op_resolver;
-	micro_op_resolver.AddConv2D();
-	micro_op_resolver.AddMaxPool2D();
-	micro_op_resolver.AddAveragePool2D();
-	micro_op_resolver.AddReshape();
-	micro_op_resolver.AddFullyConnected();
-	micro_op_resolver.AddSoftmax();
+	micro_op_resolver.AddConv2D(); // convolution (1d and 2d)
+	micro_op_resolver.AddMaxPool2D(); // max pooling
+	micro_op_resolver.AddAveragePool2D(); // global average pooling
+	micro_op_resolver.AddReshape(); // flatten
+	micro_op_resolver.AddFullyConnected(); // dense
+	micro_op_resolver.AddSoftmax(); // final layer
 	
 
     // Build an interpreter to run the model with.
@@ -194,19 +270,20 @@ void loop() {
 		(input->dims->data[1] != mfcc_matrix_rows) || // num rows = 349
 		(input->dims->data[2] != mfcc_matrix_cols) || // num cols = 12
 		(input->dims->data[3] != 1) || // num channels = 1
-		(input->type != kTfLiteInt8)) {
+		(input->type != kTfLiteInt8)) { // input type = int8
 		MicroPrintf("Bad input tensor parameters in model\n");
 		return;
   	}
 
 	MicroPrintf("checked input and output tensors\n");
 
-	// Place the quantized input in the model's input tensor
+	
 	/*
 	for (int i = 0; i < mfcc_matrix_rows * mfcc_matrix_cols; i++) {
     	input->data.int8[i] = quantized_mfcc[i / mfcc_matrix_cols][i % mfcc_matrix_cols];
 	}
 	*/
+	// Place the quantized input in the model's input tensor
 	int8_t* input_data = input->data.int8;
 	for (int row = 0; row < mfcc_matrix_rows; row++) {
 		for (int col = 0; col < mfcc_matrix_cols; col++) {
@@ -237,65 +314,7 @@ void loop() {
     // Output the results. A custom HandleOutput function can be implemented
     // for each supported hardware target.
     String prediction = HandleOutput(y_quantized, output_scale, output_zero_point);
-   
-	MicroPrintf("outputted results\n");
-
-	lcd.clear();
-	lcd.setCursor(0, 0);
-	lcd.print("predicted:");
-	lcd.setCursor(0, 1);
-	lcd.print(prediction);
-
-	while(1);
-}
-
-int8_t** compute_mfcc() {
-
-	lcd.setCursor(0, 0);
-	lcd.print("Recording");
-
-	while(1) {
-		// Wait for samples to be read
-		if (bytesRead && audio_index < length) {
-			//Serial.write((byte *) sampleBuffer, bytesRead);
-			
-			// fill up the matrix with the audio signal chunk collected
-			for (int i = 0; i < (bytesRead >> 1) && audio_index < length; i++) {
-				audio_signal[(int) audio_index / hop_size][audio_index % hop_size] = sampleBuffer[i];
-				audio_index++;
-			}
-
-			// Clear the read count
-			bytesRead = 0;
-		} else if (bytesRead == 0) {
-			delay(0.05);
-		}
-		if (audio_index == length) {
-			break;
-		}
-	}
-	
-	MicroPrintf("Done\n");
-
-	lcd.clear();
-	lcd.setCursor(0, 0);
-	lcd.print("Computing MFCC");
-
-	digitalWrite(ledPin, LOW);
-
-	// when audio is collected, computes MFCC
-	arduinoMFCC *mymfcc = new arduinoMFCC(num_filters, frame_size, hop_size, length, num_cepstral_coeffs, frequency);
-
-	mymfcc->compute(audio_signal);
-	
-	mymfcc->normalizeMFCC();
-
-	int8_t** quantized_mfcc = mymfcc->quantizeMFCC();
-
-	delete mymfcc;
-
-	MicroPrintf("completed mfcc computation\n");
-	return quantized_mfcc;
+	return prediction;
 }
 
 /**
